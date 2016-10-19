@@ -262,10 +262,12 @@ TimeoutStartSec=0
 WantedBy=multi-user.target
 EOF
 	if [ "$ETCD_CLIENT_CERT_AUTH" = true ]; then
-       sed -i "17i Environment=ETCD_CA_CERT_FILE=$ETCD_TRUSTED_CA_FILE" $TEMPLATE
-       sed -i "18i Environment=ETCD_CERT_FILE=$ETCD_CERT_FILE" $TEMPLATE
-       sed -i "19i Environment=ETCD_KEY_FILE=$ETCD_KEY_FILE" $TEMPLATE
-       sed -i -e "15s#.*#ExecStart=/usr/bin/rkt run --inherit-env --stage1-from-dir=stage1-fly.aci --volume=modules,kind=host,source=/lib/modules,readOnly=false --mount=volume=modules,target=/lib/modules --volume=dns,kind=host,source=/etc/resolv.conf,readOnly=true --volume=etcd-tls-certs,kind=host,source=$ETCD_CERT_ROOT_DIR,readOnly=true --mount=volume=dns,target=/etc/resolv.conf --mount=volume=etcd-tls-certs,target=/etc/ssl/etcd --trust-keys-from-https quay.io/calico/node:v0.22.0#g" $TEMPLATE
+       sed -i "8i PermissionsStartOnly=true" $TEMPLATE
+       sed -i "9i Environment=ETCD_CA_CERT_FILE=$ETCD_TRUSTED_CA_FILE" $TEMPLATE
+       sed -i "10i Environment=ETCD_CERT_FILE=$ETCD_CERT_FILE" $TEMPLATE
+       sed -i "11i Environment=ETCD_KEY_FILE=$ETCD_KEY_FILE" $TEMPLATE
+       sed -i "19i ExecStartPre=/bin/mkdir /var/run/calico" $TEMPLATE
+       sed -i -e "20s#.*#ExecStart=/usr/bin/rkt run --inherit-env --stage1-from-dir=stage1-fly.aci --volume=modules,kind=host,source=/lib/modules,readOnly=false --mount=volume=modules,target=/lib/modules --volume=dns,kind=host,source=/etc/resolv.conf,readOnly=true --volume=etcd-tls-certs,kind=host,source=$ETCD_CERT_ROOT_DIR,readOnly=true --mount=volume=dns,target=/etc/resolv.conf --mount=volume=etcd-tls-certs,target=/etc/ssl/etcd --trust-keys-from-https quay.io/calico/node:v0.22.0#g" $TEMPLATE
        fi
     fi
 
@@ -909,9 +911,9 @@ EOF
 }
 EOF
         if [ "$ETCD_CLIENT_CERT_AUTH" = true ]; then
-       sed -i "7i 	\"etcd_key_file\": \"$ETCD_KEY_FILE\"," $TEMPLATE
-       sed -i "8i 	\"etcd_cert_file\": \"$ETCD_CERT_FILE\"," $TEMPLATE
-       sed -i "9i 	\"etcd_ca_cert_file\": \"$ETCD_TRUSTED_CA_FILE\"," $TEMPLATE
+       sed -i "7i \	\"etcd_key_file\": \"$ETCD_KEY_FILE\"," $TEMPLATE
+       sed -i "8i \	\"etcd_cert_file\": \"$ETCD_CERT_FILE\"," $TEMPLATE
+       sed -i "9i \ 	\"etcd_ca_cert_file\": \"$ETCD_TRUSTED_CA_FILE\"," $TEMPLATE
         fi
     fi
 
