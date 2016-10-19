@@ -5,7 +5,7 @@ set -e
 export ETCD_ENDPOINTS=
 
 # Specify the version (vX.Y.Z) of Kubernetes assets to deploy
-export K8S_VER=v1.4.0_coreos.2
+export K8S_VER=v1.4.1_coreos.0
 
 # Hyperkube image repository to use.
 export HYPERKUBE_IMAGE_REPO=quay.io/coreos/hyperkube
@@ -63,6 +63,9 @@ export CONTROLLER_HOSTNAME=""
 
 # to re-create all existing configuration files ?
 export OVERWRITE_ALL_FILES=false
+
+# to mask update-engine ?
+export IS_MASK_UPDATE_ENGINE=true
 
 # The above settings can optionally be overridden using an environment file:
 ENV_FILE=/run/coreos-kubernetes/options.env
@@ -240,14 +243,16 @@ Environment=CALICO_DISABLE_FILE_LOGGING=true
 Environment=HOSTNAME=${ADVERTISE_IP}
 Environment=IP=${ADVERTISE_IP}
 Environment=FELIX_FELIXHOSTNAME=${ADVERTISE_IP}
-Environment=CALICO_NETWORKING=false
+Environment=CALICO_NETWORKING=true
 Environment=NO_DEFAULT_POOLS=true
 Environment=ETCD_ENDPOINTS=${ETCD_ENDPOINTS}
 ExecStart=/usr/bin/rkt run --inherit-env --stage1-from-dir=stage1-fly.aci \
+--volume=var-run-calico,kind=host,source=/var/run/calico \
 --volume=modules,kind=host,source=/lib/modules,readOnly=false \
 --mount=volume=modules,target=/lib/modules \
 --volume=dns,kind=host,source=/etc/resolv.conf,readOnly=true \
 --mount=volume=dns,target=/etc/resolv.conf \
+--mount=volume=var-run-calico,target=/var/run/calico \
 --trust-keys-from-https quay.io/calico/node:v0.22.0
 KillMode=mixed
 Restart=always
@@ -257,12 +262,10 @@ TimeoutStartSec=0
 WantedBy=multi-user.target
 EOF
 	if [ "$ETCD_CLIENT_CERT_AUTH" = true ]; then
-       sed -i "15i Environment=ETCD_AUTHORITY=$ETCD_AUTHORITY" $TEMPLATE
-       sed -i "16i Environment=ETCD_SCHEME=$ETCD_SCHEME" $TEMPLATE
        sed -i "17i Environment=ETCD_CA_CERT_FILE=$ETCD_TRUSTED_CA_FILE" $TEMPLATE
        sed -i "18i Environment=ETCD_CERT_FILE=$ETCD_CERT_FILE" $TEMPLATE
        sed -i "19i Environment=ETCD_KEY_FILE=$ETCD_KEY_FILE" $TEMPLATE
-       sed -i -e "20s#.*#ExecStart=/usr/bin/rkt run --inherit-env --stage1-from-dir=stage1-fly.aci --volume=modules,kind=host,source=/lib/modules,readOnly=false --mount=volume=modules,target=/lib/modules --volume=dns,kind=host,source=/etc/resolv.conf,readOnly=true --volume=etcd-tls-certs,kind=host,source=$ETCD_CERT_ROOT_DIR,readOnly=true --mount=volume=dns,target=/etc/resolv.conf --mount=volume=etcd-tls-certs,target=/etc/ssl/etcd --trust-keys-from-https quay.io/calico/node:v0.22.0#g" $TEMPLATE
+       sed -i -e "15s#.*#ExecStart=/usr/bin/rkt run --inherit-env --stage1-from-dir=stage1-fly.aci --volume=modules,kind=host,source=/lib/modules,readOnly=false --mount=volume=modules,target=/lib/modules --volume=dns,kind=host,source=/etc/resolv.conf,readOnly=true --volume=etcd-tls-certs,kind=host,source=$ETCD_CERT_ROOT_DIR,readOnly=true --mount=volume=dns,target=/etc/resolv.conf --mount=volume=etcd-tls-certs,target=/etc/ssl/etcd --trust-keys-from-https quay.io/calico/node:v0.22.0#g" $TEMPLATE
        fi
     fi
 
@@ -330,7 +333,7 @@ spec:
     - --service-cluster-ip-range=${SERVICE_IP_RANGE}
     - --secure-port=443
     - --advertise-address=${ADVERTISE_IP}
-    - --admission-control=NamespaceLifecycle,LimitRanger,ServiceAccount,ResourceQuota
+    - --admission-control=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,ResourceQuota
     - --tls-cert-file=/etc/kubernetes/ssl/apiserver.pem
     - --tls-private-key-file=/etc/kubernetes/ssl/apiserver-key.pem
     - --client-ca-file=/etc/kubernetes/ssl/ca.pem
@@ -535,30 +538,29 @@ EOF
 apiVersion: v1
 kind: ReplicationController
 metadata:
-  name: kube-dns-v19
+  name: kube-dns-v20
   namespace: kube-system
   labels:
     k8s-app: kube-dns
-    version: v19
+    version: v20
     kubernetes.io/cluster-service: "true"
 spec:
   replicas: 1
   selector:
     k8s-app: kube-dns
-    version: v19
+    version: v20
   template:
     metadata:
       labels:
         k8s-app: kube-dns
-        version: v19
-        kubernetes.io/cluster-service: "true"
+        version: v20
       annotations:
         scheduler.alpha.kubernetes.io/critical-pod: ''
         scheduler.alpha.kubernetes.io/tolerations: '[{"key":"CriticalAddonsOnly", "operator":"Exists"}]'
     spec:
       containers:
       - name: kubedns
-        image: gcr.io/google_containers/kubedns-amd64:1.7
+        image: gcr.io/google_containers/kubedns-amd64:1.8
         resources:
           limits:
             memory: 170Mi
@@ -567,7 +569,7 @@ spec:
             memory: 70Mi
         livenessProbe:
           httpGet:
-            path: /healthz
+            path: /healthz-kubedns
             port: 8080
             scheme: HTTP
           initialDelaySeconds: 60
@@ -579,7 +581,7 @@ spec:
             path: /readiness
             port: 8081
             scheme: HTTP
-          initialDelaySeconds: 30
+          initialDelaySeconds: 3
           timeoutSeconds: 5
         args:
         - --domain=cluster.local.
@@ -592,7 +594,16 @@ spec:
           name: dns-tcp-local
           protocol: TCP
       - name: dnsmasq
-        image: gcr.io/google_containers/kube-dnsmasq-amd64:1.3
+        image: gcr.io/google_containers/kube-dnsmasq-amd64:1.4
+        livenessProbe:
+          httpGet:
+            path: /healthz-dnsmasq
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 60
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
         args:
         - --cache-size=1000
         - --no-resolv
@@ -606,7 +617,7 @@ spec:
           name: dns-tcp
           protocol: TCP
       - name: healthz
-        image: gcr.io/google_containers/exechealthz-amd64:1.1
+        image: gcr.io/google_containers/exechealthz-amd64:1.2
         resources:
           limits:
             memory: 50Mi
@@ -614,13 +625,16 @@ spec:
             cpu: 10m
             memory: 50Mi
         args:
-        - -cmd=nslookup kubernetes.default.svc.cluster.local 127.0.0.1 >/dev/null && nslookup kubernetes.default.svc.cluster.local 127.0.0.1:10053 >/dev/null
-        - -port=8080
-        - -quiet
+        - --cmd=nslookup kubernetes.default.svc.cluster.local 127.0.0.1 >/dev/null
+        - --url=/healthz-dnsmasq
+        - --cmd=nslookup kubernetes.default.svc.cluster.local 127.0.0.1:10053 >/dev/null
+        - --url=/healthz-kubedns
+        - --port=8080
+        - --quiet
         ports:
         - containerPort: 8080
           protocol: TCP
-      dnsPolicy: Default 
+      dnsPolicy: Default
 EOF
     fi
 
@@ -764,11 +778,11 @@ EOF
 apiVersion: v1
 kind: ReplicationController
 metadata:
-  name: kubernetes-dashboard-v1.4.0
+  name: kubernetes-dashboard-v1.4.1
   namespace: kube-system
   labels:
     k8s-app: kubernetes-dashboard
-    version: v1.4.0
+    version: v1.4.1
     kubernetes.io/cluster-service: "true"
 spec:
   replicas: 1
@@ -778,7 +792,7 @@ spec:
     metadata:
       labels:
         k8s-app: kubernetes-dashboard
-        version: v1.4.0
+        version: v1.4.1
         kubernetes.io/cluster-service: "true"
       annotations:
         scheduler.alpha.kubernetes.io/critical-pod: ''
@@ -786,7 +800,7 @@ spec:
     spec:
       containers:
       - name: kubernetes-dashboard
-        image: gcr.io/google_containers/kubernetes-dashboard-amd64:v1.4.0
+        image: gcr.io/google_containers/kubernetes-dashboard-amd64:v1.4.1
         resources:
           limits:
             cpu: 100m
@@ -894,6 +908,11 @@ EOF
     }
 }
 EOF
+        if [ "$ETCD_CLIENT_CERT_AUTH" = true ]; then
+       sed -i "7i 	\"etcd_key_file\": \"$ETCD_KEY_FILE\"," $TEMPLATE
+       sed -i "8i 	\"etcd_cert_file\": \"$ETCD_CERT_FILE\"," $TEMPLATE
+       sed -i "9i 	\"etcd_ca_cert_file\": \"$ETCD_TRUSTED_CA_FILE\"," $TEMPLATE
+        fi
     fi
 
     local TEMPLATE=/etc/kubernetes/cni/net.d/10-flannel.conf
@@ -947,7 +966,9 @@ init_templates
 chmod +x /opt/bin/host-rkt
 init_flannel
 
-systemctl stop update-engine; systemctl mask update-engine
+if [ "$IS_MASK_UPDATE_ENGINE" = true ]; then
+	systemctl stop update-engine; systemctl mask update-engine
+fi
 
 systemctl daemon-reload
 

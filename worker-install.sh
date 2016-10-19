@@ -10,7 +10,7 @@ export ETCD_ENDPOINTS=
 export CONTROLLER_ENDPOINT=
 
 # Specify the version (vX.Y.Z) of Kubernetes assets to deploy
-export K8S_VER=v1.4.0_coreos.2
+export K8S_VER=v1.4.1_coreos.0
 
 # Hyperkube image repository to use.
 export HYPERKUBE_IMAGE_REPO=quay.io/coreos/hyperkube
@@ -43,6 +43,9 @@ export ETCD_CERT_FILE="/etc/ssl/etcd/etcd2.pem"
 export ETCD_KEY_FILE="/etc/ssl/etcd/etcd2-key.pem"
 # etcd CA certificate
 export ETCD_TRUSTED_CA_FILE="/etc/ssl/etcd/ca.pem"
+
+# to mask update-engine ?
+export IS_MASK_UPDATE_ENGINE=true
 
 # The above settings can optionally be overridden using an environment file:
 ENV_FILE=/run/coreos-kubernetes/options.env
@@ -186,15 +189,17 @@ Environment=CALICO_DISABLE_FILE_LOGGING=true
 Environment=HOSTNAME=${ADVERTISE_IP}
 Environment=IP=${ADVERTISE_IP}
 Environment=FELIX_FELIXHOSTNAME=${ADVERTISE_IP}
-Environment=CALICO_NETWORKING=false
+Environment=CALICO_NETWORKING=true
 Environment=NO_DEFAULT_POOLS=true
 Environment=ETCD_ENDPOINTS=${ETCD_ENDPOINTS}
 
 ExecStart=/usr/bin/rkt run --inherit-env --stage1-from-dir=stage1-fly.aci \
+--volume=var-run-calico,kind=host,source=/var/run/calico \
 --volume=modules,kind=host,source=/lib/modules,readOnly=false \
 --mount=volume=modules,target=/lib/modules \
 --volume=dns,kind=host,source=/etc/resolv.conf,readOnly=true \
 --mount=volume=dns,target=/etc/resolv.conf \
+--mount=volume=var-run-calico,target=/var/run/calico \
 --trust-keys-from-https quay.io/calico/node:v0.22.0
 KillMode=mixed
 Restart=always
@@ -347,7 +352,7 @@ EOF
     "delegate": {
         "type": "calico",
         "etcd_endpoints": "$ETCD_ENDPOINTS",
-        "log_level": "none",
+        "log_level": "debug",
         "log_level_stderr": "info",
         "hostname": "${ADVERTISE_IP}",
         "policy": {
@@ -359,6 +364,11 @@ EOF
     }
 }
 EOF
+	if [ "$ETCD_CLIENT_CERT_AUTH" = true ]; then
+       sed -i "7i 	\"etcd_key_file\": \"$ETCD_KEY_FILE\"," $TEMPLATE
+       sed -i "8i 	\"etcd_cert_file\": \"$ETCD_CERT_FILE\"," $TEMPLATE
+       sed -i "9i 	\"etcd_ca_cert_file\": \"$ETCD_TRUSTED_CA_FILE\"," $TEMPLATE
+	fi
     fi
 
     local TEMPLATE=/etc/kubernetes/cni/net.d/10-flannel.conf
@@ -383,7 +393,9 @@ init_templates
 
 chmod +x /opt/bin/host-rkt
 
-systemctl stop update-engine; systemctl mask update-engine
+if [ "$IS_MASK_UPDATE_ENGINE" = true ]; then
+	systemctl stop update-engine; systemctl mask update-engine
+fi
 
 systemctl daemon-reload
 if [ $CONTAINER_RUNTIME = "rkt" ]; then
