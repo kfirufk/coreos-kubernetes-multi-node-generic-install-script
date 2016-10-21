@@ -10,7 +10,7 @@ export ETCD_ENDPOINTS=
 export CONTROLLER_ENDPOINT=
 
 # Specify the version (vX.Y.Z) of Kubernetes assets to deploy
-export K8S_VER=v1.4.1_coreos.0
+export K8S_VER=v1.4.3_coreos.0
 
 # Hyperkube image repository to use.
 export HYPERKUBE_IMAGE_REPO=quay.io/coreos/hyperkube
@@ -92,7 +92,6 @@ Environment="RKT_OPTS=--volume dns,kind=host,source=/etc/resolv.conf \
 ExecStartPre=/usr/bin/mkdir -p /etc/kubernetes/manifests
 ExecStartPre=/usr/bin/mkdir -p /var/log/containers
 ExecStart=/usr/lib/coreos/kubelet-wrapper \
-  --api-servers=${CONTROLLER_ENDPOINT} \
   --cni-conf-dir=/etc/kubernetes/cni/net.d \
   --network-plugin=cni \
   --container-runtime=${CONTAINER_RUNTIME} \
@@ -100,7 +99,7 @@ ExecStart=/usr/lib/coreos/kubelet-wrapper \
   --rkt-stage1-image=coreos.com/rkt/stage1-coreos \
   --register-node=true \
   --allow-privileged=true \
-  --config=/etc/kubernetes/manifests \
+  --pod-manifest-path=/etc/kubernetes/manifests \
   --hostname-override=${ADVERTISE_IP} \
   --cluster_dns=${DNS_SERVICE_IP} \
   --cluster_domain=cluster.local \
@@ -216,7 +215,7 @@ EOF
        sed -i "18i Environment=ETCD_CERT_FILE=$ETCD_CERT_FILE" $TEMPLATE
        sed -i "19i Environment=ETCD_KEY_FILE=$ETCD_KEY_FILE" $TEMPLATE
        sed -i "22i ExecStartPre=/bin/mkdir /var/run/calico" $TEMPLATE
-       sed -i -e "23s#.*#ExecStart=/usr/bin/rkt run --inherit-env --stage1-from-dir=stage1-fly.aci --volume=modules,kind=host,source=/lib/modules,readOnly=false --mount=volume=modules,target=/lib/modules --volume=dns,kind=host,source=/etc/resolv.conf,readOnly=true --volume=etcd-tls-certs,kind=host,source=$ETCD_CERT_ROOT_DIR,readOnly=true --mount=volume=dns,target=/etc/resolv.conf --mount=volume=etcd-tls-certs,target=/etc/ssl/etcd --trust-keys-from-https quay.io/calico/node:v0.22.0#g" $TEMPLATE
+       sed -i -e "23s#.*#ExecStart=/usr/bin/rkt run --inherit-env --stage1-from-dir=stage1-fly.aci --volume=var-run-calico,kind=host,source=/var/run/calico --volume=modules,kind=host,source=/lib/modules,readOnly=false --mount=volume=modules,target=/lib/modules --volume=dns,kind=host,source=/etc/resolv.conf,readOnly=true --volume=etcd-tls-certs,kind=host,source=$ETCD_CERT_ROOT_DIR,readOnly=true --mount=volume=dns,target=/etc/resolv.conf --mount=volume=etcd-tls-certs,target=/etc/ssl/etcd --mount=volume=var-run-calico,target=/var/run/calico --trust-keys-from-https quay.io/calico/node:v0.22.0#g" $TEMPLATE
        fi
     fi
 
@@ -230,6 +229,7 @@ kind: Config
 clusters:
 - name: local
   cluster:
+    server: $CONTROLLER_ENDPOINT:443
     certificate-authority: /etc/kubernetes/ssl/ca.pem
 users:
 - name: kubelet

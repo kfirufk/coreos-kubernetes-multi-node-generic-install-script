@@ -5,7 +5,7 @@ set -e
 export ETCD_ENDPOINTS=
 
 # Specify the version (vX.Y.Z) of Kubernetes assets to deploy
-export K8S_VER=v1.4.1_coreos.0
+export K8S_VER=v1.4.3_coreos.0
 
 # Hyperkube image repository to use.
 export HYPERKUBE_IMAGE_REPO=quay.io/coreos/hyperkube
@@ -148,7 +148,7 @@ Environment="RKT_OPTS=--volume dns,kind=host,source=/etc/resolv.conf \
 ExecStartPre=/usr/bin/mkdir -p /etc/kubernetes/manifests
 ExecStartPre=/usr/bin/mkdir -p /var/log/containers
 ExecStart=/usr/lib/coreos/kubelet-wrapper \
-  --api-servers=http://127.0.0.1:8080 \
+  --kubeconfig=/etc/kubernetes/controller-kubeconfig.yaml \
   --register-schedulable=false \
   --cni-conf-dir=/etc/kubernetes/cni/net.d \
   --network-plugin=cni \
@@ -156,7 +156,7 @@ ExecStart=/usr/lib/coreos/kubelet-wrapper \
   --rkt-path=/usr/bin/rkt \
   --rkt-stage1-image=coreos.com/rkt/stage1-coreos \
   --allow-privileged=true \
-  --config=/etc/kubernetes/manifests \
+  --pod-manifest-path=/etc/kubernetes/manifests \
   --hostname-override=${ADVERTISE_IP} \
   --cluster_dns=${DNS_SERVICE_IP} \
   --cluster_domain=cluster.local
@@ -267,10 +267,35 @@ EOF
        sed -i "10i Environment=ETCD_CERT_FILE=$ETCD_CERT_FILE" $TEMPLATE
        sed -i "11i Environment=ETCD_KEY_FILE=$ETCD_KEY_FILE" $TEMPLATE
        sed -i "19i ExecStartPre=/bin/mkdir /var/run/calico" $TEMPLATE
-       sed -i -e "20s#.*#ExecStart=/usr/bin/rkt run --inherit-env --stage1-from-dir=stage1-fly.aci --volume=modules,kind=host,source=/lib/modules,readOnly=false --mount=volume=modules,target=/lib/modules --volume=dns,kind=host,source=/etc/resolv.conf,readOnly=true --volume=etcd-tls-certs,kind=host,source=$ETCD_CERT_ROOT_DIR,readOnly=true --mount=volume=dns,target=/etc/resolv.conf --mount=volume=etcd-tls-certs,target=/etc/ssl/etcd --trust-keys-from-https quay.io/calico/node:v0.22.0#g" $TEMPLATE
+       sed -i -e "20s#.*#ExecStart=/usr/bin/rkt run --inherit-env --stage1-from-dir=stage1-fly.aci  --volume=var-run-calico,kind=host,source=/var/run/calico --volume=modules,kind=host,source=/lib/modules,readOnly=false --mount=volume=modules,target=/lib/modules --volume=dns,kind=host,source=/etc/resolv.conf,readOnly=true --volume=etcd-tls-certs,kind=host,source=$ETCD_CERT_ROOT_DIR,readOnly=true --mount=volume=dns,target=/etc/resolv.conf --mount=volume=etcd-tls-certs,target=/etc/ssl/etcd --mount=volume=var-run-calico,target=/var/run/calico --trust-keys-from-https quay.io/calico/node:v0.22.0#g" $TEMPLATE
        fi
     fi
-
+    local TEMPLATE=/etc/kubernetes/controller-kubeconfig.yaml
+    if [ ! -f $TEMPLATE ] || [ "$OVERWRITE_ALL_FILES" = true ]; then
+        echo "TEMPLATE: $TEMPLATE"
+        mkdir -p $(dirname $TEMPLATE)
+        cat << EOF > $TEMPLATE
+current-context: tuxin-coreos-context
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority: /etc/kubernetes/ssl/ca.pem
+    server: https://coreos-2.tux-in.com:443
+  name: tuxin-coreos-cluster
+contexts:
+- context:
+    cluster: tuxin-coreos-cluster
+  name: tuxin-coreos-context
+kind: Config
+preferences:
+  colors: true
+users:
+- name: kubelet
+  user:
+    client-certificate: /etc/kubernetes/ssl/apiserver.pem
+    client-key: /etc/kubernetes/ssl/apiserver-key.pem
+EOF
+    fi
     local TEMPLATE=/etc/kubernetes/manifests/kube-proxy.yaml
     if [ "$OVERWRITE_ALL_FILES" = true ] || [ ! -f $TEMPLATE ]; then
         echo "TEMPLATE: $TEMPLATE"
