@@ -1,0 +1,23 @@
+--- worker-install.sh.orig	2016-12-09 20:09:28.000000000 +0000
++++ worker-install.sh	2016-12-09 20:10:10.000000000 +0000
+@@ -25,6 +25,9 @@
+ # Determines the container runtime for kubernetes to use. Accepts 'docker' or 'rkt'.
+ export CONTAINER_RUNTIME=docker
+ 
++# to mask update-engine ?
++export IS_MASK_UPDATE_ENGINE=true
++
+ # The above settings can optionally be overridden using an environment file:
+ ENV_FILE=/run/coreos-kubernetes/options.env
+ 
+@@ -357,7 +360,9 @@
+ 
+ chmod +x /opt/bin/host-rkt
+ 
+-systemctl stop update-engine; systemctl mask update-engine
++if [ "$IS_MASK_UPDATE_ENGINE" = true ]; then
++        systemctl stop update-engine; systemctl mask update-engine
++fi
+ 
+ systemctl daemon-reload
+ 

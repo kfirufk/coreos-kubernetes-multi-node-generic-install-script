@@ -1,0 +1,23 @@
+--- controller-install.sh.orig	2016-12-09 19:28:02.000000000 +0000
++++ controller-install.sh	2016-12-09 19:33:53.000000000 +0000
+@@ -36,6 +36,9 @@
+ # Determines the container runtime for kubernetes to use. Accepts 'docker' or 'rkt'.
+ export CONTAINER_RUNTIME=docker
+ 
++# to mask update-engine ?
++export IS_MASK_UPDATE_ENGINE=true
++
+ # The above settings can optionally be overridden using an environment file:
+ ENV_FILE=/run/coreos-kubernetes/options.env
+ 
+@@ -883,7 +886,9 @@
+ 
+ init_flannel
+ 
+-systemctl stop update-engine; systemctl mask update-engine
++if [ "$IS_MASK_UPDATE_ENGINE" = true ]; then
++        systemctl stop update-engine; systemctl mask update-engine
++fi
+ 
+ systemctl daemon-reload
+ 

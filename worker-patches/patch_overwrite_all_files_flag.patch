@@ -1,0 +1,104 @@
+--- worker-install.sh.orig	2016-12-09 20:09:28.000000000 +0000
++++ worker-install.sh	2016-12-09 20:24:37.000000000 +0000
+@@ -25,6 +25,9 @@
+ # Determines the container runtime for kubernetes to use. Accepts 'docker' or 'rkt'.
+ export CONTAINER_RUNTIME=docker
+ 
++# to re-create all existing configuration files ?
++export OVERWRITE_ALL_FILES=false
++
+ # The above settings can optionally be overridden using an environment file:
+ ENV_FILE=/run/coreos-kubernetes/options.env
+ 
+@@ -52,7 +55,7 @@
+ function init_templates {
+     local TEMPLATE=/etc/systemd/system/kubelet.service
+     local uuid_file="/var/run/kubelet-pod.uuid"
+-    if [ ! -f $TEMPLATE ]; then
++    if [ "$OVERWRITE_ALL_FILES" = true ] || [ ! -f $TEMPLATE ]; then
+         echo "TEMPLATE: $TEMPLATE"
+         mkdir -p $(dirname $TEMPLATE)
+         cat << EOF > $TEMPLATE
+@@ -99,7 +102,7 @@
+     fi
+ 
+     local TEMPLATE=/opt/bin/host-rkt
+-    if [ ! -f $TEMPLATE ]; then
++    if [ "$OVERWRITE_ALL_FILES" = true ] || [ ! -f $TEMPLATE ]; then
+         echo "TEMPLATE: $TEMPLATE"
+         mkdir -p $(dirname $TEMPLATE)
+         cat << EOF > $TEMPLATE
+@@ -117,7 +120,8 @@
+     fi
+ 
+     local TEMPLATE=/etc/systemd/system/load-rkt-stage1.service
+-    if [ ${CONTAINER_RUNTIME} = "rkt" ] && [ ! -f $TEMPLATE ]; then
++    if [ ${CONTAINER_RUNTIME} = "rkt" ] && [ ! -f $TEMPLATE ] ||
++       [ ${CONTAINER_RUNTIME} = "rkt" ] && [ "$OVERWRITE_ALL_FILES" = true ]; then
+         echo "TEMPLATE: $TEMPLATE"
+         mkdir -p $(dirname $TEMPLATE)
+         cat << EOF > $TEMPLATE
+@@ -139,7 +143,8 @@
+     fi
+ 
+     local TEMPLATE=/etc/systemd/system/rkt-api.service
+-    if [ ${CONTAINER_RUNTIME} = "rkt" ] && [ ! -f $TEMPLATE ]; then
++    if [ ${CONTAINER_RUNTIME} = "rkt" ] && [ ! -f $TEMPLATE ] ||
++       [ ${CONTAINER_RUNTIME} = "rkt" ] && [ "$OVERWRITE_ALL_FILES" = true ]; then
+         echo "TEMPLATE: $TEMPLATE"
+         mkdir -p $(dirname $TEMPLATE)
+         cat << EOF > $TEMPLATE
+@@ -191,7 +196,7 @@
+     fi
+ 
+     local TEMPLATE=/etc/kubernetes/worker-kubeconfig.yaml
+-    if [ ! -f $TEMPLATE ]; then
++    if [ "$OVERWRITE_ALL_FILES" = true ] || [ ! -f $TEMPLATE ]; then
+         echo "TEMPLATE: $TEMPLATE"
+         mkdir -p $(dirname $TEMPLATE)
+         cat << EOF > $TEMPLATE
+@@ -216,7 +221,7 @@
+     fi
+ 
+     local TEMPLATE=/etc/kubernetes/manifests/kube-proxy.yaml
+-    if [ ! -f $TEMPLATE ]; then
++    if [ "$OVERWRITE_ALL_FILES" = true ] || [ ! -f $TEMPLATE ]; then
+         echo "TEMPLATE: $TEMPLATE"
+         mkdir -p $(dirname $TEMPLATE)
+         cat << EOF > $TEMPLATE
+@@ -268,7 +273,7 @@
+     fi
+ 
+     local TEMPLATE=/etc/flannel/options.env
+-    if [ ! -f $TEMPLATE ]; then
++    if [ "$OVERWRITE_ALL_FILES" = true ] || [ ! -f $TEMPLATE ]; then
+         echo "TEMPLATE: $TEMPLATE"
+         mkdir -p $(dirname $TEMPLATE)
+         cat << EOF > $TEMPLATE
+@@ -278,7 +283,7 @@
+     fi
+ 
+     local TEMPLATE=/etc/systemd/system/flanneld.service.d/40-ExecStartPre-symlink.conf.conf
+-    if [ ! -f $TEMPLATE ]; then
++    if [ "$OVERWRITE_ALL_FILES" = true ] || [ ! -f $TEMPLATE ]; then
+         echo "TEMPLATE: $TEMPLATE"
+         mkdir -p $(dirname $TEMPLATE)
+         cat << EOF > $TEMPLATE
+@@ -288,7 +293,7 @@
+     fi
+ 
+     local TEMPLATE=/etc/systemd/system/docker.service.d/40-flannel.conf
+-    if [ ! -f $TEMPLATE ]; then
++    if [ "$OVERWRITE_ALL_FILES" = true ] || [ ! -f $TEMPLATE ]; then
+         echo "TEMPLATE: $TEMPLATE"
+         mkdir -p $(dirname $TEMPLATE)
+         cat << EOF > $TEMPLATE
+@@ -301,7 +306,7 @@
+     fi
+ 
+     local TEMPLATE=/etc/kubernetes/cni/docker_opts_cni.env
+-    if [ ! -f $TEMPLATE ]; then
++    if [ "$OVERWRITE_ALL_FILES" = true ] || [ ! -f $TEMPLATE ]; then
+         echo "TEMPLATE: $TEMPLATE"
+         mkdir -p $(dirname $TEMPLATE)
+         cat << EOF > $TEMPLATE
