@@ -1,5 +1,5 @@
---- worker-install.sh.orig	2016-12-09 20:09:28.000000000 +0000
-+++ worker-install.sh	2016-12-09 20:45:36.000000000 +0000
+--- worker-install.sh.orig	2016-12-10 08:40:20.000000000 +0000
++++ worker-install.sh	2016-12-10 08:40:08.000000000 +0000
 @@ -4,6 +4,24 @@
  # List of etcd servers (http://ip:port), comma separated
  export ETCD_ENDPOINTS=
@@ -34,8 +34,8 @@
 +       sed -i "15i Environment=ETCD_CA_CERT_FILE=$ETCD_TRUSTED_CA_FILE" $TEMPLATE
 +       sed -i "16i Environment=ETCD_CERT_FILE=$ETCD_CERT_FILE" $TEMPLATE
 +       sed -i "17i Environment=ETCD_KEY_FILE=$ETCD_KEY_FILE" $TEMPLATE
-+       sed -i "20i ExecStartPre=/bin/mkdir -p /var/run/calico" $TEMPLATE
-+       sed -i -e "21s#.*#ExecStart=/usr/bin/rkt run --inherit-env --stage1-from-dir=stage1-fly.aci --volume=var-run-calico,kind=host,source=/var/run/calico --volume=modules,kind=host,source=/lib/modules,readOnly=false --mount=volume=modules,target=/lib/modules --volume=dns,kind=host,source=/etc/resolv.conf,readOnly=true --volume=etcd-tls-certs,kind=host,source=$ETCD_CERT_ROOT_DIR,readOnly=true --mount=volume=dns,target=/etc/resolv.conf --mount=volume=etcd-tls-certs,target=/etc/ssl/etcd --mount=volume=var-run-calico,target=/var/run/calico --trust-keys-from-https quay.io/calico/node:v0.19.0#g" $TEMPLATE
++       sed -i "19i ExecStartPre=/bin/mkdir -p /var/run/calico" $TEMPLATE
++       sed -i -e "20s#.*#ExecStart=/usr/bin/rkt run --inherit-env --stage1-from-dir=stage1-fly.aci --volume=var-run-calico,kind=host,source=/var/run/calico --volume=modules,kind=host,source=/lib/modules,readOnly=false --mount=volume=modules,target=/lib/modules --volume=dns,kind=host,source=/etc/resolv.conf,readOnly=true --volume=etcd-tls-certs,kind=host,source=$ETCD_CERT_ROOT_DIR,readOnly=true --mount=volume=dns,target=/etc/resolv.conf --mount=volume=etcd-tls-certs,target=/etc/ssl/etcd --mount=volume=var-run-calico,target=/var/run/calico --trust-keys-from-https quay.io/calico/node:v0.19.0#g" $TEMPLATE
 +       fi
      fi
  
