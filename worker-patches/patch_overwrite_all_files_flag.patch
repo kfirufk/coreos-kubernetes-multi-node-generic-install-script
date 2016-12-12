@@ -1,5 +1,5 @@
---- worker-install.sh.orig	2016-12-09 20:09:28.000000000 +0000
-+++ worker-install.sh	2016-12-09 20:24:37.000000000 +0000
+--- worker-install.sh.orig	2016-12-12 15:10:00.000000000 +0000
++++ worker-install.sh	2016-12-12 15:11:27.000000000 +0000
 @@ -25,6 +25,9 @@
  # Determines the container runtime for kubernetes to use. Accepts 'docker' or 'rkt'.
  export CONTAINER_RUNTIME=docker
@@ -48,7 +48,17 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -191,7 +196,7 @@
+@@ -157,7 +162,8 @@
+     fi
+ 
+     local TEMPLATE=/etc/systemd/system/calico-node.service
+-    if [ "${USE_CALICO}" = "true" ] && [ ! -f "${TEMPLATE}" ]; then
++    if [ "${USE_CALICO}" = "true" ] && [ ! -f "${TEMPLATE}" ] ||
++       [ "${USE_CALICO}" = "true" ] && [ "$OVERWRITE_ALL_FILES" = true ]; then
+         echo "TEMPLATE: $TEMPLATE"
+         mkdir -p $(dirname $TEMPLATE)
+         cat << EOF > $TEMPLATE
+@@ -191,7 +197,7 @@
      fi
  
      local TEMPLATE=/etc/kubernetes/worker-kubeconfig.yaml
@@ -57,7 +67,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -216,7 +221,7 @@
+@@ -216,7 +222,7 @@
      fi
  
      local TEMPLATE=/etc/kubernetes/manifests/kube-proxy.yaml
@@ -66,7 +76,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -268,7 +273,7 @@
+@@ -268,7 +274,7 @@
      fi
  
      local TEMPLATE=/etc/flannel/options.env
@@ -75,7 +85,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -278,7 +283,7 @@
+@@ -278,7 +284,7 @@
      fi
  
      local TEMPLATE=/etc/systemd/system/flanneld.service.d/40-ExecStartPre-symlink.conf.conf
@@ -84,7 +94,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -288,7 +293,7 @@
+@@ -288,7 +294,7 @@
      fi
  
      local TEMPLATE=/etc/systemd/system/docker.service.d/40-flannel.conf
@@ -93,7 +103,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -301,7 +306,7 @@
+@@ -301,7 +307,7 @@
      fi
  
      local TEMPLATE=/etc/kubernetes/cni/docker_opts_cni.env
