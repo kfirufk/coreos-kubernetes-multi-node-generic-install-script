@@ -1,0 +1,21 @@
+--- controller-install.sh.orig	2016-12-12 13:26:21.000000000 +0000
++++ controller-install.sh	2016-12-12 13:27:11.000000000 +0000
+@@ -1,6 +1,9 @@
+ #!/bin/bash
+ set -e
+ 
++# https://quay.io/repository/calico/node image version
++export CALICO_NODE_VER=v1.0.0-rc3
++
+ # List of etcd servers (http://ip:port), comma separated
+ export ETCD_ENDPOINTS=
+ 
+@@ -212,7 +215,7 @@
+ --mount=volume=modules,target=/lib/modules \
+ --volume=dns,kind=host,source=/etc/resolv.conf,readOnly=true \
+ --mount=volume=dns,target=/etc/resolv.conf \
+---trust-keys-from-https quay.io/calico/node:v0.19.0
++--trust-keys-from-https quay.io/calico/node:${CALICO_NODE_VER}
+ KillMode=mixed
+ Restart=always
+ TimeoutStartSec=0
