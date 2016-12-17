@@ -1,5 +1,5 @@
---- controller-install.sh.orig	2016-12-12 14:46:26.000000000 +0000
-+++ controller-install.sh	2016-12-12 14:47:48.000000000 +0000
+--- controller-install.sh.orig	2016-12-16 18:45:58.000000000 +0000
++++ controller-install.sh	2016-12-16 18:47:32.000000000 +0000
 @@ -36,6 +36,9 @@
  # Determines the container runtime for kubernetes to use. Accepts 'docker' or 'rkt'.
  export CONTAINER_RUNTIME=docker
@@ -10,7 +10,7 @@
  # The above settings can optionally be overridden using an environment file:
  ENV_FILE=/run/coreos-kubernetes/options.env
  
-@@ -86,7 +89,7 @@
+@@ -94,7 +97,7 @@
  function init_templates {
      local TEMPLATE=/etc/systemd/system/kubelet.service
      local uuid_file="/var/run/kubelet-pod.uuid"
@@ -19,7 +19,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -130,7 +133,7 @@
+@@ -140,7 +143,7 @@
      fi
  
      local TEMPLATE=/opt/bin/host-rkt
@@ -28,7 +28,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -149,7 +152,8 @@
+@@ -159,7 +162,8 @@
  
  
      local TEMPLATE=/etc/systemd/system/load-rkt-stage1.service
@@ -38,7 +38,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -171,7 +175,8 @@
+@@ -181,7 +185,8 @@
      fi
  
      local TEMPLATE=/etc/systemd/system/rkt-api.service
@@ -48,17 +48,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -189,7 +194,8 @@
-     fi
- 
-     local TEMPLATE=/etc/systemd/system/calico-node.service
--    if [ "${USE_CALICO}" = "true" ] && [ ! -f "${TEMPLATE}" ]; then
-+    if [ "${USE_CALICO}" = "true" ] && [ ! -f "${TEMPLATE}" ] ||
-+       [ "${USE_CALICO}" = "true" ] && [ "$OVERWRITE_ALL_FILES" = true ]; then
-         echo "TEMPLATE: $TEMPLATE"
-         mkdir -p $(dirname $TEMPLATE)
-         cat << EOF > $TEMPLATE
-@@ -223,7 +229,7 @@
+@@ -199,7 +204,7 @@
      fi
  
      local TEMPLATE=/etc/kubernetes/manifests/kube-proxy.yaml
@@ -67,7 +57,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -263,7 +269,7 @@
+@@ -240,7 +245,7 @@
      fi
  
      local TEMPLATE=/etc/kubernetes/manifests/kube-apiserver.yaml
@@ -76,7 +66,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -324,7 +330,7 @@
+@@ -302,7 +307,7 @@
      fi
  
      local TEMPLATE=/etc/kubernetes/manifests/kube-controller-manager.yaml
@@ -85,7 +75,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -373,7 +379,7 @@
+@@ -351,7 +356,7 @@
      fi
  
      local TEMPLATE=/etc/kubernetes/manifests/kube-scheduler.yaml
@@ -94,16 +84,25 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -455,7 +461,7 @@
+@@ -384,7 +389,7 @@
      fi
  
-     local TEMPLATE=/srv/kubernetes/manifests/kube-dns-rc.yaml
+     local TEMPLATE=/srv/kubernetes/manifests/kube-dns-de.yaml
 -    if [ ! -f $TEMPLATE ]; then
 +    if [ "$OVERWRITE_ALL_FILES" = true ] || [ ! -f $TEMPLATE ]; then
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -563,7 +569,7 @@
+@@ -530,7 +535,7 @@
+     fi
+ 
+     local TEMPLATE=/srv/kubernetes/manifests/kube-dns-autoscaler-de.yaml
+-    if [ ! -f $TEMPLATE ]; then
++    if [ "$OVERWRITE_ALL_FILES" = true ] || [ ! -f $TEMPLATE ]; then
+         echo "TEMPLATE: $TEMPLATE"
+         mkdir -p $(dirname $TEMPLATE)
+         cat << EOF > $TEMPLATE
+@@ -571,7 +576,7 @@
      fi
  
      local TEMPLATE=/srv/kubernetes/manifests/kube-dns-svc.yaml
@@ -112,7 +111,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -591,7 +597,7 @@
+@@ -599,7 +604,7 @@
      fi
  
      local TEMPLATE=/srv/kubernetes/manifests/heapster-de.yaml
@@ -121,7 +120,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -673,7 +679,7 @@
+@@ -673,7 +678,7 @@
      fi
  
      local TEMPLATE=/srv/kubernetes/manifests/heapster-svc.yaml
@@ -130,16 +129,16 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -695,7 +701,7 @@
+@@ -695,7 +700,7 @@
      fi
  
-     local TEMPLATE=/srv/kubernetes/manifests/kube-dashboard-rc.yaml
+     local TEMPLATE=/srv/kubernetes/manifests/kube-dashboard-de.yaml
 -    if [ ! -f $TEMPLATE ]; then
 +    if [ "$OVERWRITE_ALL_FILES" = true ] || [ ! -f $TEMPLATE ]; then
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -744,7 +750,7 @@
+@@ -742,7 +747,7 @@
      fi
  
      local TEMPLATE=/srv/kubernetes/manifests/kube-dashboard-svc.yaml
@@ -148,7 +147,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -766,7 +772,7 @@
+@@ -764,7 +769,7 @@
      fi
  
      local TEMPLATE=/etc/flannel/options.env
@@ -157,7 +156,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -776,7 +782,7 @@
+@@ -774,7 +779,7 @@
      fi
  
      local TEMPLATE=/etc/systemd/system/flanneld.service.d/40-ExecStartPre-symlink.conf.conf
@@ -166,7 +165,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -786,7 +792,7 @@
+@@ -784,7 +789,7 @@
      fi
  
      local TEMPLATE=/etc/systemd/system/docker.service.d/40-flannel.conf
@@ -175,12 +174,22 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -799,7 +805,7 @@
+@@ -797,7 +802,7 @@
      fi
  
      local TEMPLATE=/etc/kubernetes/cni/docker_opts_cni.env
 -    if [ ! -f $TEMPLATE ]; then
 +    if [ "$OVERWRITE_ALL_FILES" = true ] || [ ! -f $TEMPLATE ]; then
+         echo "TEMPLATE: $TEMPLATE"
+         mkdir -p $(dirname $TEMPLATE)
+         cat << EOF > $TEMPLATE
+@@ -807,7 +812,8 @@
+     fi
+ 
+     local TEMPLATE=/etc/kubernetes/cni/net.d/10-flannel.conf
+-    if [ "${USE_CALICO}" = "false" ] && [ ! -f "${TEMPLATE}" ]; then
++    if [ "${USE_CALICO}" = "false" ] && [ ! -f "${TEMPLATE}" ] ||
++       [ "${USE_CALICO}" = "false" ] && [ "$OVERWRITE_ALL_FILES" = true ]; then
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE

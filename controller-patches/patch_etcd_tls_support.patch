@@ -1,6 +1,12 @@
---- controller-install.sh.orig	2016-12-09 19:28:02.000000000 +0000
-+++ controller-install.sh	2016-12-09 19:56:39.000000000 +0000
-@@ -4,6 +4,24 @@
+--- controller-install.sh.orig	2016-12-17 10:56:30.000000000 +0000
++++ controller-install.sh	2016-12-17 10:56:22.000000000 +0000
+@@ -1,9 +1,30 @@
+ #!/bin/bash
+ set -e
+ 
++# https://quay.io/repository/calico/node image version
++export CALICO_NODE_VER=v1.0.0
++
  # List of etcd servers (http://ip:port), comma separated
  export ETCD_ENDPOINTS=
  
@@ -23,9 +29,9 @@
 +export ETCD_SCHEME="https"
 +
  # Specify the version (vX.Y.Z) of Kubernetes assets to deploy
- export K8S_VER=v1.4.6_coreos.0
+ export K8S_VER=v1.5.1_coreos.0
  
-@@ -67,9 +85,16 @@
+@@ -75,9 +96,16 @@
          IFS=',' read -ra ES <<< "$ETCD_ENDPOINTS"
          for ETCD in "${ES[@]}"; do
              echo "Trying: $ETCD"
@@ -43,96 +49,46 @@
              fi
              sleep 1
          done
-@@ -77,7 +102,12 @@
+@@ -85,7 +113,12 @@
              break
          fi
      done
+-    RES=$(curl --silent -X PUT -d "value={\"Network\":\"$POD_NETWORK\",\"Backend\":{\"Type\":\"vxlan\"}}" "$ACTIVE_ETCD/v2/keys/coreos.com/network/config?prevExist=false")
 +    RES="";
 +    if [ "$ETCD_CLIENT_CERT_AUTH" = true ]; then
 +    RES=$(curl --silent --cacert $ETCD_TRUSTED_CA_FILE --key $ETCD_KEY_FILE --cert $ETCD_CERT_FILE -X PUT -d "value={\"Network\":\"$POD_NETWORK\",\"Backend\":{\"Type\":\"vxlan\"}}" "$ACTIVE_ETCD/v2/keys/coreos.com/network/config?prevExist=false")
 +    else
-     RES=$(curl --silent -X PUT -d "value={\"Network\":\"$POD_NETWORK\",\"Backend\":{\"Type\":\"vxlan\"}}" "$ACTIVE_ETCD/v2/keys/coreos.com/network/config?prevExist=false")
++     RES=$(curl --silent -X PUT -d "value={\"Network\":\"$POD_NETWORK\",\"Backend\":{\"Type\":\"vxlan\"}}" "$ACTIVE_ETCD/v2/keys/coreos.com/network/config?prevExist=false")
 +    fi
      if [ -z "$(echo $RES | grep '"action":"create"')" ] && [ -z "$(echo $RES | grep 'Key already exists')" ]; then
          echo "Unexpected error configuring flannel pod network: $RES"
      fi
-@@ -220,6 +250,14 @@
- [Install]
- WantedBy=multi-user.target
- EOF
-+        if [ "$ETCD_CLIENT_CERT_AUTH" = true ]; then
-+       sed -i "8i PermissionsStartOnly=true" $TEMPLATE
-+       sed -i "9i Environment=ETCD_CA_CERT_FILE=$ETCD_TRUSTED_CA_FILE" $TEMPLATE
-+       sed -i "10i Environment=ETCD_CERT_FILE=$ETCD_CERT_FILE" $TEMPLATE
-+       sed -i "11i Environment=ETCD_KEY_FILE=$ETCD_KEY_FILE" $TEMPLATE
-+       sed -i "19i ExecStartPre=/bin/mkdir -p /var/run/calico" $TEMPLATE
-+       sed -i -e "20s#.*#ExecStart=/usr/bin/rkt run --inherit-env --stage1-from-dir=stage1-fly.aci  --volume=var-run-calico,kind=host,source=/var/run/calico --volume=modules,kind=host,source=/lib/modules,readOnly=false --mount=volume=modules,target=/lib/modules --volume=dns,kind=host,source=/etc/resolv.conf,readOnly=true --volume=etcd-tls-certs,kind=host,source=$ETCD_CERT_ROOT_DIR,readOnly=true --mount=volume=dns,target=/etc/resolv.conf --mount=volume=etcd-tls-certs,target=/etc/ssl/etcd --mount=volume=var-run-calico,target=/var/run/calico --trust-keys-from-https quay.io/calico/node:${CALICO_NODE_VER}#g" $TEMPLATE
-+       fi
-     fi
+@@ -835,6 +868,9 @@
+ data:
+   # Configure this with the location of your etcd cluster.
+   etcd_endpoints: "${ETCD_ENDPOINTS}"
++  etcd_ca: "${ETCD_TRUSTED_CA_FILE}"
++  etcd_key: "${ETCD_KEY_FILE}"
++  etcd_cert: "${ETCD_CERT_FILE}"
  
-     local TEMPLATE=/etc/kubernetes/manifests/kube-proxy.yaml
-@@ -321,6 +359,17 @@
-       path: /usr/share/ca-certificates
-     name: ssl-certs-host
- EOF
-+        if [ "$ETCD_CLIENT_CERT_AUTH" = true ]; then
-+                sed -i "26i \    - --etcd-cafile=$ETCD_TRUSTED_CA_FILE" $TEMPLATE
-+                sed -i "27i \    - --etcd-certfile=$ETCD_CERT_FILE" $TEMPLATE
-+                sed -i "28i \    - --etcd-keyfile=$ETCD_KEY_FILE" $TEMPLATE
-+                sed -i "44i \    - mountPath: $ETCD_CERT_ROOT_DIR" $TEMPLATE
-+                sed -i "45i \      name: etcd-tls-certs" $TEMPLATE
-+                sed -i "46i \      readOnly: true" $TEMPLATE
-+                sed -i "54i \  - hostPath:" $TEMPLATE
-+                sed -i "55i \        path: $ETCD_CERT_ROOT_DIR" $TEMPLATE
-+                sed -i "56i \    name: etcd-tls-certs" $TEMPLATE
-+        fi
-     fi
- 
-     local TEMPLATE=/etc/kubernetes/manifests/kube-controller-manager.yaml
-@@ -437,6 +486,24 @@
-         - "--election-namespace=calico-system"
-         - "--http=127.0.0.1:4040"
- EOF
-+        if [ "$ETCD_CLIENT_CERT_AUTH" = true ]; then
-+                sed -i "13i \        - name: ETCD_SCHEME" $TEMPLATE
-+                sed -i "14i \          value: $ETCD_SCHEME" $TEMPLATE
-+                sed -i "15i \        - name: ETCD_CA_CERT_FILE" $TEMPLATE
-+                sed -i "16i \          value: $ETCD_TRUSTED_CA_FILE" $TEMPLATE
-+                sed -i "17i \        - name: ETCD_CERT_FILE" $TEMPLATE
-+                sed -i "18i \          value: $ETCD_CERT_FILE" $TEMPLATE
-+                sed -i "19i \        - name: ETCD_KEY_FILE" $TEMPLATE
-+                sed -i "20i \          value: $ETCD_KEY_FILE" $TEMPLATE
-+                sed -i "27i \      volumeMounts:" $TEMPLATE
-+                sed -i "28i \      - mountPath: $ETCD_CERT_ROOT_DIR" $TEMPLATE
-+                sed -i "29i \        name: etcd-tls-certs" $TEMPLATE
-+                sed -i "30i \        readOnly: true" $TEMPLATE
-+                echo "  volumes:" >> $TEMPLATE
-+                echo "   - hostPath:" >> $TEMPLATE
-+                echo "         path: $ETCD_CERT_ROOT_DIR" >> $TEMPLATE
-+                echo "     name: etcd-tls-certs" >> $TEMPLATE
-+        fi
-     fi
- 
-     local TEMPLATE=/srv/kubernetes/manifests/calico-system.json
-@@ -773,6 +840,9 @@
- FLANNELD_IFACE=$ADVERTISE_IP
- FLANNELD_ETCD_ENDPOINTS=$ETCD_ENDPOINTS
- EOF
-+    if [ "$ETCD_CLIENT_CERT_AUTH" = true ]; then
-+    printf "FLANNELD_ETCD_CAFILE=$ETCD_TRUSTED_CA_FILE\nFLANNELD_ETCD_CERTFILE=$ETCD_CERT_FILE\nFLANNELD_ETCD_KEYFILE=$ETCD_KEY_FILE\n" >> $TEMPLATE
-+    fi
-     fi
- 
-     local TEMPLATE=/etc/systemd/system/flanneld.service.d/40-ExecStartPre-symlink.conf.conf
-@@ -829,6 +899,11 @@
-     }
- }
- EOF
-+        if [ "$ETCD_CLIENT_CERT_AUTH" = true ]; then
-+       sed -i "7i \     \"etcd_key_file\": \"$ETCD_KEY_FILE\"," $TEMPLATE
-+       sed -i "8i \     \"etcd_cert_file\": \"$ETCD_CERT_FILE\"," $TEMPLATE
-+       sed -i "9i \     \"etcd_ca_cert_file\": \"$ETCD_TRUSTED_CA_FILE\"," $TEMPLATE
-+        fi
-     fi
- 
-     local TEMPLATE=/etc/kubernetes/cni/net.d/10-flannel.conf
+   # The CNI network configuration to install on each node.  The special
+   # values in this config will be automatically populated.
+@@ -845,6 +881,9 @@
+         "delegate": {
+           "type": "calico",
+           "etcd_endpoints": "__ETCD_ENDPOINTS__",
++          "etcd_ca": "${ETCD_TRUSTED_CA_FILE}"
++          "etcd_key": "${ETCD_KEY_FILE}"
++          "etcd_cert": "${ETCD_CERT_FILE}"
+           "log_level": "info",
+           "policy": {
+               "type": "k8s",
+@@ -889,7 +928,7 @@
+         # container programs network policy and routes on each
+         # host.
+         - name: calico-node
+-          image: quay.io/calico/node:v0.23.0
++          image: quay.io/calico/node:${CALICO_NODE_VER}
+           env:
+             # The location of the Calico etcd cluster.
+             - name: ETCD_ENDPOINTS

@@ -1,5 +1,5 @@
---- controller-install.sh.orig	2016-12-09 19:28:02.000000000 +0000
-+++ controller-install.sh	2016-12-09 19:33:53.000000000 +0000
+--- controller-install.sh.orig	2016-12-16 18:36:08.000000000 +0000
++++ controller-install.sh	2016-12-16 18:45:12.000000000 +0000
 @@ -36,6 +36,9 @@
  # Determines the container runtime for kubernetes to use. Accepts 'docker' or 'rkt'.
  export CONTAINER_RUNTIME=docker
@@ -10,7 +10,7 @@
  # The above settings can optionally be overridden using an environment file:
  ENV_FILE=/run/coreos-kubernetes/options.env
  
-@@ -883,7 +886,9 @@
+@@ -1055,7 +1058,9 @@
  
  init_flannel
  
