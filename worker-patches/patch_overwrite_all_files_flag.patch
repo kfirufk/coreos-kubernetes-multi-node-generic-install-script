@@ -1,6 +1,6 @@
---- worker-install.sh.orig	2016-12-12 15:10:00.000000000 +0000
-+++ worker-install.sh	2016-12-12 15:11:27.000000000 +0000
-@@ -25,6 +25,9 @@
+--- worker-install.sh.orig	2016-12-14 06:40:44.000000000 +0000
++++ worker-install.sh	2016-12-14 06:43:03.000000000 +0000
+@@ -30,6 +30,9 @@
  # Determines the container runtime for kubernetes to use. Accepts 'docker' or 'rkt'.
  export CONTAINER_RUNTIME=docker
  
@@ -10,7 +10,7 @@
  # The above settings can optionally be overridden using an environment file:
  ENV_FILE=/run/coreos-kubernetes/options.env
  
-@@ -52,7 +55,7 @@
+@@ -65,7 +68,7 @@
  function init_templates {
      local TEMPLATE=/etc/systemd/system/kubelet.service
      local uuid_file="/var/run/kubelet-pod.uuid"
@@ -19,7 +19,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -99,7 +102,7 @@
+@@ -114,7 +117,7 @@
      fi
  
      local TEMPLATE=/opt/bin/host-rkt
@@ -28,7 +28,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -117,7 +120,8 @@
+@@ -132,7 +135,8 @@
      fi
  
      local TEMPLATE=/etc/systemd/system/load-rkt-stage1.service
@@ -38,7 +38,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -139,7 +143,8 @@
+@@ -154,7 +158,8 @@
      fi
  
      local TEMPLATE=/etc/systemd/system/rkt-api.service
@@ -48,17 +48,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -157,7 +162,8 @@
-     fi
- 
-     local TEMPLATE=/etc/systemd/system/calico-node.service
--    if [ "${USE_CALICO}" = "true" ] && [ ! -f "${TEMPLATE}" ]; then
-+    if [ "${USE_CALICO}" = "true" ] && [ ! -f "${TEMPLATE}" ] ||
-+       [ "${USE_CALICO}" = "true" ] && [ "$OVERWRITE_ALL_FILES" = true ]; then
-         echo "TEMPLATE: $TEMPLATE"
-         mkdir -p $(dirname $TEMPLATE)
-         cat << EOF > $TEMPLATE
-@@ -191,7 +197,7 @@
+@@ -172,7 +177,7 @@
      fi
  
      local TEMPLATE=/etc/kubernetes/worker-kubeconfig.yaml
@@ -67,7 +57,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -216,7 +222,7 @@
+@@ -197,7 +202,7 @@
      fi
  
      local TEMPLATE=/etc/kubernetes/manifests/kube-proxy.yaml
@@ -76,7 +66,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -268,7 +274,7 @@
+@@ -250,7 +255,7 @@
      fi
  
      local TEMPLATE=/etc/flannel/options.env
@@ -85,7 +75,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -278,7 +284,7 @@
+@@ -260,7 +265,7 @@
      fi
  
      local TEMPLATE=/etc/systemd/system/flanneld.service.d/40-ExecStartPre-symlink.conf.conf
@@ -94,7 +84,7 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -288,7 +294,7 @@
+@@ -270,7 +275,7 @@
      fi
  
      local TEMPLATE=/etc/systemd/system/docker.service.d/40-flannel.conf
@@ -103,12 +93,22 @@
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE
-@@ -301,7 +307,7 @@
+@@ -283,7 +288,7 @@
      fi
  
      local TEMPLATE=/etc/kubernetes/cni/docker_opts_cni.env
 -    if [ ! -f $TEMPLATE ]; then
 +    if [ "$OVERWRITE_ALL_FILES" = true ] || [ ! -f $TEMPLATE ]; then
+         echo "TEMPLATE: $TEMPLATE"
+         mkdir -p $(dirname $TEMPLATE)
+         cat << EOF > $TEMPLATE
+@@ -294,7 +299,8 @@
+     fi
+ 
+     local TEMPLATE=/etc/kubernetes/cni/net.d/10-flannel.conf
+-    if [ "${USE_CALICO}" = "false" ] && [ ! -f "${TEMPLATE}" ]; then
++    if [ "${USE_CALICO}" = "false" ] && [ ! -f "${TEMPLATE}" ] ||
++       [ "${USE_CALICO}" = "false" ] && [ "$OVERWRITE_ALL_FILES" = true ]; then
          echo "TEMPLATE: $TEMPLATE"
          mkdir -p $(dirname $TEMPLATE)
          cat << EOF > $TEMPLATE

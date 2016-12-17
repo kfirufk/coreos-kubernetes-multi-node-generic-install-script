@@ -1,5 +1,5 @@
---- worker-install.sh.orig	2016-12-10 08:40:20.000000000 +0000
-+++ worker-install.sh	2016-12-10 08:40:08.000000000 +0000
+--- worker-install.sh.orig	2016-12-14 06:50:11.000000000 +0000
++++ worker-install.sh	2016-12-14 06:50:04.000000000 +0000
 @@ -4,6 +4,24 @@
  # List of etcd servers (http://ip:port), comma separated
  export ETCD_ENDPOINTS=
@@ -25,22 +25,7 @@
  # The endpoint the worker node should use to contact controller nodes (https://ip:port)
  # In HA configurations this should be an external DNS record or loadbalancer in front of the control nodes.
  # However, it is also possible to point directly to a single control node.
-@@ -188,6 +206,14 @@
- [Install]
- WantedBy=multi-user.target
- EOF
-+        if [ "$ETCD_CLIENT_CERT_AUTH" = true ]; then
-+       sed -i "8i PermissionsStartOnly=true" $TEMPLATE	
-+       sed -i "15i Environment=ETCD_CA_CERT_FILE=$ETCD_TRUSTED_CA_FILE" $TEMPLATE
-+       sed -i "16i Environment=ETCD_CERT_FILE=$ETCD_CERT_FILE" $TEMPLATE
-+       sed -i "17i Environment=ETCD_KEY_FILE=$ETCD_KEY_FILE" $TEMPLATE
-+       sed -i "19i ExecStartPre=/bin/mkdir -p /var/run/calico" $TEMPLATE
-+       sed -i -e "20s#.*#ExecStart=/usr/bin/rkt run --inherit-env --stage1-from-dir=stage1-fly.aci --volume=var-run-calico,kind=host,source=/var/run/calico --volume=modules,kind=host,source=/lib/modules,readOnly=false --mount=volume=modules,target=/lib/modules --volume=dns,kind=host,source=/etc/resolv.conf,readOnly=true --volume=etcd-tls-certs,kind=host,source=$ETCD_CERT_ROOT_DIR,readOnly=true --mount=volume=dns,target=/etc/resolv.conf --mount=volume=etcd-tls-certs,target=/etc/ssl/etcd --mount=volume=var-run-calico,target=/var/run/calico --trust-keys-from-https quay.io/calico/node:${CALICO_NODE_VER}#g" $TEMPLATE
-+       fi
-     fi
- 
-     local TEMPLATE=/etc/kubernetes/worker-kubeconfig.yaml
-@@ -275,6 +301,9 @@
+@@ -257,6 +275,9 @@
  FLANNELD_IFACE=$ADVERTISE_IP
  FLANNELD_ETCD_ENDPOINTS=$ETCD_ENDPOINTS
  EOF
@@ -50,7 +35,7 @@
      fi
  
      local TEMPLATE=/etc/systemd/system/flanneld.service.d/40-ExecStartPre-symlink.conf.conf
-@@ -333,6 +362,11 @@
+@@ -306,6 +327,11 @@
      }
  }
  EOF
@@ -61,4 +46,4 @@
 +        fi
      fi
  
-     local TEMPLATE=/etc/kubernetes/cni/net.d/10-flannel.conf
+ }
