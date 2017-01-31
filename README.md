@@ -1,3 +1,9 @@
+#deprecated
+
+welp.. each etcd2 server has it's own certificates and I can't really tell each server to connect to a specific etcd2 server so I need to store the certificates of all the etcd2 certificates in the same directory. 
+
+anyhow.. creating an etcd2 proxy at http://127.0.0.1:4001 solved the need for etcd2 certificaes.
+
 # coreos-kubernetes-multi-node-generic-install-script
 CoreOS Kubernetes multi-node generic install script modifications
 
